@@ -98,6 +98,8 @@ function run() {
     page_number=1
     going=true
 
+    download_count=0
+
     while $going; do
         url=$(get_music_url "$band_id" "$page_number")
 
@@ -114,7 +116,7 @@ function run() {
 
         if [ "$total" == 0 ]; then
             going=false
-            echo "All done!"
+            echo "All done! Downloaded $download_count files."
             rm -rf "$cache_folder"
             exit 0
         fi
@@ -137,6 +139,7 @@ function run() {
             curl --silent --compressed "$url" > "$filepath"
 
             let current=$current+1
+            let download_count=$download_count+1
         done < "$cache_folder/$page_number.txt"
 
         let page_number=$page_number+1
