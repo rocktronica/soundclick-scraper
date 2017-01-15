@@ -33,8 +33,12 @@ function get_download_url_from_id() {
     echo "$final_url"
 }
 
-alias trim="xargs"
-alias count="wc -l | trim"
+function trim() {
+    xargs
+}
+function count() {
+    wc -l | trim
+}
 
 function get_music_url() {
     band_id="$1"
