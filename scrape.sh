@@ -18,10 +18,6 @@ $program_name BAND_ID
     exit
 fi
 
-
-# Create output directory
-mkdir -p "output/$band_id"
-
 function get_basename() {
     echo $1 | grep -oE "[^/]*\.[^/]*$"
 }
@@ -48,6 +44,12 @@ function get_music_url() {
 }
 
 function run() {
+    # Create cache and output folders
+    output_folder="output/$band_id"
+    mkdir -p "$output_folder"
+    cache_folder="cache/$band_id"
+    mkdir -p "$cache_folder"
+
     page_number=1
     going=true
 
@@ -55,19 +57,20 @@ function run() {
         url=$(get_music_url $band_id $page_number)
 
         # Download and cache pahe
-        curl --silent --compressed "$url" > "cache/$page_number.html"
+        curl --silent --compressed "$url" > "$cache_folder/$page_number.html"
 
         # Parse and cache IDs
-        cat "cache/$page_number.html" | \
+        cat "$cache_folder/$page_number.html" | \
             grep -oE "downloadSong.cfm\?ID=\d*" | \
             grep -oE "\d+" \
-            > "cache/$page_number.txt"
+            > "$cache_folder/$page_number.txt"
 
         # Quit if exhausted and no IDs found
-        total=$(cat "cache/$page_number.txt" | count)
+        total=$(cat "$cache_folder/$page_number.txt" | count)
         if [ $total == 0 ]; then
             going=false
             echo "All done!"
+            rm -rf $cache_folder
             exit 0
         fi
 
@@ -80,7 +83,7 @@ function run() {
         while read id; do
             url=$(get_download_url_from_id "$id")
             filename=$(get_basename $url)
-            filepath="output/$band_id/$filename"
+            filepath="$output_folder/$filename"
 
             echo " - $current/$total: #$id"
             echo "   $url"
@@ -89,13 +92,12 @@ function run() {
             curl --silent --compressed "$url" > "$filepath"
 
             let current=$current+1
-        done < "cache/$page_number.txt"
+        done < "$cache_folder/$page_number.txt"
 
         let page_number=$page_number+1
 
         echo
     done;
-
 }
 
 run
