@@ -50,24 +50,26 @@ function run() {
     while $going; do
         url=$(get_music_url $band_id $page_number)
 
-        echo "PAGE $page_number"
-        echo "$url"
-        echo
+        # Download and cache pahe
         curl --silent --compressed "$url" > "cache/$page_number.html"
 
-        # Cache IDs to file
+        # Parse and cache IDs
         cat "cache/$page_number.html" | \
             grep -oE "downloadSong.cfm\?ID=\d*" | \
             grep -oE "\d+" \
             > "cache/$page_number.txt"
 
-        # Quit if exhausted
+        # Quit if exhausted and no IDs found
         total=$(cat "cache/$page_number.txt" | count)
         if [ $total == 0 ]; then
             going=false
             echo "All done!"
             exit 0
         fi
+
+        echo "PAGE $page_number"
+        echo "$url"
+        echo
 
         # Read through IDs, get URLs, and download
         current=1
