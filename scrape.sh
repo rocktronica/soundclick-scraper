@@ -5,6 +5,7 @@
 # Rename argument(s)
 program_name="$0"
 band_id="$1"
+greedy=false # !!!!!
 
 if [ "$1" == '-h' ]; then
     echo "\
@@ -43,6 +44,22 @@ function get_music_url() {
     echo "http://www.soundclick.com/bands/default.cfm?bandID=$band_id&content=music&currentPage=$page"
 }
 
+function parse_and_cache_ids() {
+    input="$1"
+    output="$2"
+    song_regex="downloadSong.cfm\?ID=\d*"
+
+    if $greedy; then
+        song_regex="songid=\d*"
+    fi
+
+    cat "$input" | \
+        grep -oE "$song_regex" | \
+        grep -oE "\d+" | \
+        uniq \
+        > "$output"
+}
+
 function run() {
     # Create cache and output folders
     output_folder="output/$band_id"
@@ -56,14 +73,12 @@ function run() {
     while $going; do
         url=$(get_music_url $band_id $page_number)
 
-        # Download and cache pahe
+        # Download and cache page
         curl --silent --compressed "$url" > "$cache_folder/$page_number.html"
 
-        # Parse and cache IDs
-        cat "$cache_folder/$page_number.html" | \
-            grep -oE "downloadSong.cfm\?ID=\d*" | \
-            grep -oE "\d+" \
-            > "$cache_folder/$page_number.txt"
+        parse_and_cache_ids \
+            "$cache_folder/$page_number.html" \
+            "$cache_folder/$page_number.txt"
 
         # Quit if exhausted and no IDs found
         total=$(cat "$cache_folder/$page_number.txt" | count)
