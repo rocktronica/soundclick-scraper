@@ -11,12 +11,23 @@ if [ "$1" == '-h' ]; then
     echo "\
 A script to download an entire music catalogue from a SoundCloud artist
 
+Options:
+    -h      Show this help info and quit
+    -g      Download all songs on page, regardless of artist
+
 Usage:
-$program_name BAND_ID
+    $program_name -h
+    $program_name BAND_ID
+    $program_name -g BAND_ID
 
 (The Band ID is easily obtained as a URL parameter on their page)
 "
     exit
+fi
+
+if [ "$1" == '-g' ]; then
+    greedy=true
+    band_id="$2"
 fi
 
 function get_basename() {
