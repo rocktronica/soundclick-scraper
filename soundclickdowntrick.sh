@@ -2,44 +2,82 @@
 
 {
 
-function parse_html_for_image_ids() {
-    cat cache/cache.html | \
-        grep -oE "downloadSong.cfm\?ID=\d*" | \
-        grep -oE "\d+"
-}
+# Rename argument(s)
+band_id="$1"
 
-function basename() {
+# Create output directory
+mkdir -p "output/$band_id"
+
+function get_basename() {
     echo $1 | grep -oE "[^/]*\.[^/]*$"
 }
 
-function get_download_urls() {
-    while read id; do
-        url="http://www.soundclick.com/util/downloadSong.cfm?ID=$id"
+function get_download_url_from_id() {
+    id="$1"
+    url="http://www.soundclick.com/util/downloadSong.cfm?ID=$id"
+    final_url=$(curl -w "%{url_effective}\n" -I -L -s -S $url -o /dev/null)
+    echo "$final_url"
+}
 
-        # idk how this works!
-        final_url=$(curl -w "%{url_effective}\n" -I -L -s -S $url -o /dev/null)
+alias trim="xargs"
+alias count="wc -l | trim"
 
-        echo $url
-        echo $final_url
+function get_music_url() {
+    band_id="$1"
+    page="${2:-1}"
 
-        filename=$(basename $final_url)
+    echo "http://www.soundclick.com/bands/default.cfm?bandID=$band_id&content=music&currentPage=$page"
+}
 
-        curl -# -L --compressed $final_url > "output/$filename"
+function run() {
+    page_number=1
+    going=true
+
+    while $going; do
+        url=$(get_music_url $band_id $page_number)
+
+        echo "PAGE $page_number"
+        echo "$url"
+        echo
+        curl --silent --compressed "$url" > "cache/$page_number.html"
+
+        # Cache IDs to file
+        cat "cache/$page_number.html" | \
+            grep -oE "downloadSong.cfm\?ID=\d*" | \
+            grep -oE "\d+" \
+            > "cache/$page_number.txt"
+
+        # Quit if exhausted
+        total=$(cat "cache/$page_number.txt" | count)
+        if [ $total == 0 ]; then
+            going=false
+            echo "All done!"
+            exit 0
+        fi
+
+        # Read through IDs, get URLs, and download
+        current=1
+        while read id; do
+            url=$(get_download_url_from_id "$id")
+            filename=$(get_basename $url)
+            filepath="output/$band_id/$filename"
+
+            echo " - $current/$total: #$id"
+            echo "   $url"
+            echo "   $filepath"
+
+            curl --silent --compressed "$url" > "$filepath"
+
+            let current=$current+1
+        done < "cache/$page_number.txt"
+
+        let page_number=$page_number+1
+
         echo
     done;
+
 }
 
-function cache_page() {
-    url="http://www.soundclick.com/bands/default.cfm?bandID=505305&content=music&songcount=114&offset=0&currentPage=5"
-
-    echo "Caching $url"
-    curl -# -L --compressed "$url" > cache/cache.html
-
-    echo
-    echo
-}
-
-cache_page
-parse_html_for_image_ids | get_download_urls
+run
 
 }
