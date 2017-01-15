@@ -16,7 +16,7 @@ greedy=false # !!!!!
 
 if [ "$1" == '-h' ]; then
     echo "\
-A script to download an entire music catalogue from a SoundCloud artist
+A script to download an entire music catalogue from a SoundClick artist
 
 Options:
     -h      Show this help info and quit
