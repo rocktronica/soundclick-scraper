@@ -2,38 +2,35 @@
 
 {
 
+function help() {
+    echo "\
+A script to download an entire music catalogue from a SoundClick artist
+
+Options:
+-h      Show this help info and quit
+-g      Download all songs on page, regardless of artist
+
+Usage:
+$program_name -h
+$program_name URL
+$program_name -g URL
+    "
+}
+
+function trim() {
+    xargs
+}
+
+function count() {
+    wc -l | trim
+}
+
 function get_band_id_from_url() {
     url="$1"
     echo $url | \
         grep -oE "bandID=\d+" | \
         grep -oE "\d+"
 }
-
-# Rename argument(s)
-program_name="$0"
-band_id=$(get_band_id_from_url $1)
-greedy=false # !!!!!
-
-if [ "$1" == '-h' ]; then
-    echo "\
-A script to download an entire music catalogue from a SoundClick artist
-
-Options:
-    -h      Show this help info and quit
-    -g      Download all songs on page, regardless of artist
-
-Usage:
-    $program_name -h
-    $program_name URL
-    $program_name -g URL
-"
-    exit
-fi
-
-if [ "$1" == '-g' ]; then
-    greedy=true
-    band_id=$(get_band_id_from_url $2)
-fi
 
 function get_basename() {
     echo $1 | grep -oE "[^/]*\.[^/]*$"
@@ -46,13 +43,6 @@ function get_download_url_from_id() {
     echo "$final_url"
 }
 
-function trim() {
-    xargs
-}
-function count() {
-    wc -l | trim
-}
-
 function get_music_url() {
     band_id="$1"
     page="${2:-1}"
@@ -61,11 +51,13 @@ function get_music_url() {
 }
 
 function parse_and_cache_ids() {
-    input="$1"
-    output="$2"
+    greedy="$1"
+    input="$2"
+    output="$3"
+
     song_regex="downloadSong.cfm\?ID=\d*"
 
-    if $greedy; then
+    if [[ $greedy == "true" ]]; then
         song_regex="songid=\d*"
     fi
 
@@ -77,6 +69,26 @@ function parse_and_cache_ids() {
 }
 
 function run() {
+    # Rename arguments
+    program_name="$0"
+    band_id=$(get_band_id_from_url $1)
+    greedy=false
+
+    if [ "$1" == '-h' ]; then
+        help
+        exit
+    fi
+
+    if [ "$1" == '-g' ]; then
+        greedy=true
+        band_id=$(get_band_id_from_url $2)
+    fi
+
+    if [[ -z "$band_id" ]]; then
+        echo 'No band_id found'
+        exit 1
+    fi
+
     # Create cache and output folders
     output_folder="output/$band_id"
     mkdir -p "$output_folder"
@@ -131,6 +143,8 @@ function run() {
     done;
 }
 
-run
+arguments=$(echo ${@:1})
+
+run $arguments
 
 }
