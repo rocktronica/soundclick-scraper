@@ -2,9 +2,16 @@
 
 {
 
+function get_band_id_from_url() {
+    url="$1"
+    echo $url | \
+        grep -oE "bandID=\d+" | \
+        grep -oE "\d+"
+}
+
 # Rename argument(s)
 program_name="$0"
-band_id="$1"
+band_id=$(get_band_id_from_url $1)
 greedy=false # !!!!!
 
 if [ "$1" == '-h' ]; then
@@ -17,17 +24,15 @@ Options:
 
 Usage:
     $program_name -h
-    $program_name BAND_ID
-    $program_name -g BAND_ID
-
-(The Band ID is easily obtained as a URL parameter on their page)
+    $program_name URL
+    $program_name -g URL
 "
     exit
 fi
 
 if [ "$1" == '-g' ]; then
     greedy=true
-    band_id="$2"
+    band_id=$(get_band_id_from_url $2)
 fi
 
 function get_basename() {
