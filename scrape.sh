@@ -21,25 +21,26 @@ function trim() {
     xargs
 }
 
-function count() {
-    wc -l | trim
+function count_lines() {
+    filename="$1"
+    wc -l < "$filename" | trim
 }
 
 function get_band_id_from_url() {
     url="$1"
-    echo $url | \
+    echo "$url" | \
         grep -oE "bandID=\d+" | \
         grep -oE "\d+"
 }
 
 function get_basename() {
-    echo $1 | grep -oE "[^/]*\.[^/]*$"
+    echo "$1" | grep -oE "[^/]*\.[^/]*$"
 }
 
 function get_download_url_from_id() {
     id="$1"
     url="http://www.soundclick.com/util/downloadSong.cfm?ID=$id"
-    final_url=$(curl -w "%{url_effective}\n" -I -L -s -S $url -o /dev/null)
+    final_url=$(curl -w "%{url_effective}\n" -I -L -s -S "$url" -o /dev/null)
     echo "$final_url"
 }
 
@@ -61,8 +62,7 @@ function parse_and_cache_ids() {
         song_regex="songid=\d*"
     fi
 
-    cat "$input" | \
-        grep -oE "$song_regex" | \
+    grep -oE "$song_regex" "$input" | \
         grep -oE "\d+" | \
         uniq \
         > "$output"
@@ -71,7 +71,7 @@ function parse_and_cache_ids() {
 function run() {
     # Rename arguments
     program_name="$0"
-    band_id=$(get_band_id_from_url $1)
+    band_id=$(get_band_id_from_url "$1")
     greedy=false
 
     if [ "$1" == '-h' ]; then
@@ -81,7 +81,7 @@ function run() {
 
     if [ "$1" == '-g' ]; then
         greedy=true
-        band_id=$(get_band_id_from_url $2)
+        band_id=$(get_band_id_from_url "$2")
     fi
 
     if [[ -z "$band_id" ]]; then
@@ -99,21 +99,23 @@ function run() {
     going=true
 
     while $going; do
-        url=$(get_music_url $band_id $page_number)
+        url=$(get_music_url "$band_id" "$page_number")
 
         # Download and cache page
         curl --silent --compressed "$url" > "$cache_folder/$page_number.html"
 
         parse_and_cache_ids \
+            "$greedy" \
             "$cache_folder/$page_number.html" \
             "$cache_folder/$page_number.txt"
 
         # Quit if exhausted and no IDs found
-        total=$(cat "$cache_folder/$page_number.txt" | count)
-        if [ $total == 0 ]; then
+        total=$(count_lines "$cache_folder/$page_number.txt")
+
+        if [ "$total" == 0 ]; then
             going=false
             echo "All done!"
-            rm -rf $cache_folder
+            rm -rf "$cache_folder"
             exit 0
         fi
 
@@ -123,9 +125,9 @@ function run() {
 
         # Read through IDs, get URLs, and download
         current=1
-        while read id; do
+        while read -r id; do
             url=$(get_download_url_from_id "$id")
-            filename=$(get_basename $url)
+            filename=$(get_basename "$url")
             filepath="$output_folder/$filename"
 
             echo " - $current/$total: #$id"
@@ -143,8 +145,6 @@ function run() {
     done;
 }
 
-arguments=$(echo ${@:1})
-
-run $arguments
+run "${@:1}"
 
 }
