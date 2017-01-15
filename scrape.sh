@@ -3,7 +3,21 @@
 {
 
 # Rename argument(s)
+program_name="$0"
 band_id="$1"
+
+if [ "$1" == '-h' ]; then
+    echo "\
+A script to download an entire music catalogue from a SoundCloud artist
+
+Usage:
+$program_name BAND_ID
+
+(The Band ID is easily obtained as a URL parameter on their page)
+"
+    exit
+fi
+
 
 # Create output directory
 mkdir -p "output/$band_id"
